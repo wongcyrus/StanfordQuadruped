@@ -1,0 +1,14 @@
+[Unit]
+Description=Mini Pupper Network Action Server
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/StanfordQuadruped
+ExecStart=/usr/bin/python3 network_action_server.py --host 0.0.0.0 --port 8081
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

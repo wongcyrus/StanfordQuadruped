@@ -1,5 +1,6 @@
 import numpy as np
 import time
+import requests
 from src.IMU import IMU
 from src.Controller import Controller
 from src.JoystickInterface import JoystickInterface
@@ -48,6 +49,8 @@ def main(use_imu=False):
     print("swing time: ", config.swing_time)
     print("z clearance: ", config.z_clearance)
     print("x shift: ", config.x_shift)
+    requests.get('http://localhost:8080/pupper/status/start')
+    requests.get('http://localhost:8080/pupper/status/toggle')
 
     # Wait until the activate button has been pressed
     while True:
