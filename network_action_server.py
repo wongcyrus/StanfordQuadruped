@@ -3,7 +3,7 @@
 Enhanced Network Action Server for Stanford Quadruped Mini Pupper
 
 This server provides a REST API for controlling the dog robot remotely.
-It bridges HTTP requests to UDP commands and provides better action management.
+It integrates with MovementGroups to provide high-level movement functions.
 
 Author: Enhanced by AI Assistant
 License: Apache 2.0
@@ -12,6 +12,7 @@ License: Apache 2.0
 import json
 import logging
 import queue
+import sys
 import threading
 import time
 from datetime import datetime
@@ -19,11 +20,23 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from typing import Any, Dict, Optional
 from urllib.parse import urlparse
 
+# Add src directory to path for MovementGroup import
+sys.path.append("./src")
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
+
+# Import MovementGroups
+try:
+    from MovementGroup import MovementGroups
+
+    logger.info("MovementGroups imported successfully")
+except ImportError as e:
+    logger.error(f"Failed to import MovementGroups: {e}")
+    MovementGroups = None
 
 
 class ActionCommand:
@@ -115,7 +128,7 @@ class ActionQueue:
 
 
 class DogActionController:
-    """Enhanced action controller with UDP integration."""
+    """Enhanced action controller with MovementGroups integration."""
 
     def __init__(self, udp_port: int = 8830):
         self.udp_port = udp_port
@@ -129,7 +142,15 @@ class DogActionController:
             "last_action_time": None,
         }
 
-        # Import UDP publisher
+        # Initialize MovementGroups
+        if MovementGroups:
+            self.movement_groups = MovementGroups()
+            logger.info("MovementGroups initialized successfully")
+        else:
+            self.movement_groups = None
+            logger.error("MovementGroups not available - running in limited mode")
+
+        # Import UDP publisher if available
         try:
             import UDPComms
 
@@ -139,36 +160,31 @@ class DogActionController:
             logger.error("UDPComms not available - running in simulation mode")
             self.udp_publisher = None
 
-        # Action mapping to UDP commands
-        self.action_mappings = {
-            # Basic movements
-            "forward": {"ly": 1.0, "lx": 0.0, "rx": 0.0, "ry": 0.0},
-            "backward": {"ly": -1.0, "lx": 0.0, "rx": 0.0, "ry": 0.0},
-            "left": {"ly": 0.0, "lx": -1.0, "rx": 0.0, "ry": 0.0},
-            "right": {"ly": 0.0, "lx": 1.0, "rx": 0.0, "ry": 0.0},
-            "turn_left": {"ly": 0.0, "lx": 0.0, "rx": -1.0, "ry": 0.0},
-            "turn_right": {"ly": 0.0, "lx": 0.0, "rx": 1.0, "ry": 0.0},
-            "stop": {"ly": 0.0, "lx": 0.0, "rx": 0.0, "ry": 0.0},
-            # Control actions
-            "activate": {"L1": 1},
-            "deactivate": {"L1": 1},
-            "trot": {"R1": 1},
-            "hop": {"x": 1},
-            "dance": {"circle": 1},
-            # Posture actions
-            "pitch_up": {"ly": 0.0, "lx": 0.0, "rx": 0.0, "ry": 1.0},
-            "pitch_down": {"ly": 0.0, "lx": 0.0, "rx": 0.0, "ry": -1.0},
-            "height_up": {"dpady": 1},
-            "height_down": {"dpady": -1},
-            "roll_left": {"dpadx": -1},
-            "roll_right": {"dpadx": 1},
-        }
+        # Available actions from MovementGroups
+        self.available_actions = self._get_available_actions()
 
         # Start action processor thread
         self.processor_thread = threading.Thread(
             target=self._action_processor, daemon=True
         )
         self.processor_thread.start()
+
+    def _get_available_actions(self) -> list:
+        """Get list of available actions from MovementGroups."""
+        if not self.movement_groups:
+            return []
+
+        # Get all public methods from MovementGroups (excluding private and built-in methods)
+        actions = []
+        for attr_name in dir(self.movement_groups):
+            if not attr_name.startswith("_") and callable(
+                getattr(self.movement_groups, attr_name)
+            ):
+                # Exclude utility methods
+                if attr_name not in ["cap_limit"]:
+                    actions.append(attr_name)
+
+        return sorted(actions)
 
     def start(self):
         """Start the action controller."""
@@ -222,104 +238,98 @@ class DogActionController:
                 time.sleep(0.1)  # Brief pause between actions
 
     def _execute_single_action(self, action: ActionCommand) -> bool:
-        """Execute a single action via UDP."""
+        """Execute a single action using MovementGroups."""
         action_name = action.action_name.lower()
         duration = action.duration
+        parameters = action.parameters or {}
 
-        if action_name not in self.action_mappings:
+        if not self.movement_groups:
+            logger.warning("MovementGroups not available")
+            return False
+
+        if action_name not in self.available_actions:
             logger.warning(f"Unknown action: {action_name}")
             return False
 
-        if not self.udp_publisher:
-            logger.info(f"Simulating action: {action_name} for {duration}s")
-            time.sleep(duration)
+        try:
+            # Get the movement function
+            movement_func = getattr(self.movement_groups, action_name)
+
+            # Clear any previous movements
+            self.movement_groups.MovementLib = []
+
+            # Execute the movement function with parameters
+            if action_name == "stop":
+                # Stop function takes time parameter
+                movement_func(time=duration)
+            elif action_name in ["head_move"]:
+                # Head move takes pitch_deg, yaw_deg, time_uni, time_acc
+                pitch_deg = parameters.get("pitch_deg", 0)
+                yaw_deg = parameters.get("yaw_deg", 0)
+                movement_func(
+                    pitch_deg=pitch_deg, yaw_deg=yaw_deg, time_uni=duration, time_acc=1
+                )
+            elif action_name in ["body_row"]:
+                # Body row takes row_deg, time_uni, time_acc
+                row_deg = parameters.get("row_deg", 0)
+                movement_func(row_deg=row_deg, time_uni=duration, time_acc=1)
+            elif action_name in ["balance"]:
+                # Balance takes roll_deg, pitch_deg, time_uni, time_acc
+                roll_deg = parameters.get("roll_deg", 0)
+                pitch_deg = parameters.get("pitch_deg", 0)
+                movement_func(
+                    roll_deg=roll_deg,
+                    pitch_deg=pitch_deg,
+                    time_uni=duration,
+                    time_acc=1,
+                )
+            elif action_name in ["gait_uni"]:
+                # Gait uni takes v_x, v_y, time_uni, time_acc
+                v_x = parameters.get("v_x", 0)
+                v_y = parameters.get("v_y", 0)
+                movement_func(v_x=v_x, v_y=v_y, time_uni=duration, time_acc=1)
+            elif action_name in ["height_move"]:
+                # Height move takes ht, time_uni, time_acc
+                ht = parameters.get("ht", 0)
+                movement_func(ht=ht, time_uni=duration, time_acc=1)
+            elif action_name in ["foreleg_lift", "backleg_lift"]:
+                # Leg lift takes leg_index, ht, time_uni, time_acc
+                leg_index = parameters.get("leg_index", "left")
+                ht = parameters.get("ht", 0.01)
+                movement_func(leg_index=leg_index, ht=ht, time_uni=duration, time_acc=1)
+            elif action_name in ["rotate"]:
+                # Rotate takes angle
+                angle = parameters.get("angle", 1)
+                movement_func(angle=angle)
+            elif action_name in ["bowback"]:
+                # Bowback takes angle
+                angle = parameters.get("angle", 20)
+                movement_func(angle=angle)
+            else:
+                # Simple movements with no parameters
+                movement_func()
+
+            logger.info(f"Executed MovementGroup action: {action_name}")
+
+            # Simulate execution time for simple actions
+            simple_actions = [
+                "stop",
+                "gait_uni",
+                "head_move",
+                "body_row",
+                "balance",
+                "height_move",
+                "foreleg_lift",
+                "backleg_lift",
+            ]
+            if action_name not in simple_actions:
+                time.sleep(duration)
+
             return True
 
-        try:
-            # Send UDP command
-            udp_command = self._create_udp_command(action)
-
-            # For movement actions, send continuous commands
-            if action_name in [
-                "forward",
-                "backward",
-                "left",
-                "right",
-                "turn_left",
-                "turn_right",
-            ]:
-                return self._execute_movement_action(udp_command, duration)
-            else:
-                # For discrete actions, send once
-                return self._execute_discrete_action(udp_command, duration)
-
         except Exception as e:
-            logger.error(f"Failed to execute UDP command: {e}")
+            logger.error(f"Failed to execute MovementGroup action '{action_name}': {e}")
             return False
-
-    def _create_udp_command(self, action: ActionCommand) -> Dict[str, Any]:
-        """Create UDP command from action."""
-        base_command = {
-            "ly": 0.0,
-            "lx": 0.0,
-            "rx": 0.0,
-            "ry": 0.0,
-            "L1": 0,
-            "R1": 0,
-            "x": 0,
-            "circle": 0,
-            "triangle": 0,
-            "dpady": 0,
-            "dpadx": 0,
-            "message_rate": 20,
-        }
-
-        # Update with action-specific values
-        action_mapping = self.action_mappings.get(action.action_name.lower(), {})
-        base_command.update(action_mapping)
-
-        # Apply parameters if provided
-        if action.parameters:
-            for key, value in action.parameters.items():
-                if key in base_command:
-                    base_command[key] = value
-
-        return base_command
-
-    def _execute_movement_action(
-        self, command: Dict[str, Any], duration: float
-    ) -> bool:
-        """Execute a movement action with continuous commands."""
-        logger.info(f"Executing movement action for {duration}s")
-
-        start_time = time.time()
-        message_rate = command.get("message_rate", 20)
-        sleep_interval = 1.0 / message_rate
-
-        while time.time() - start_time < duration:
-            self.udp_publisher.send(command)
-            time.sleep(sleep_interval)
-
-        # Send stop command
-        stop_command = command.copy()
-        stop_command.update({"ly": 0.0, "lx": 0.0, "rx": 0.0, "ry": 0.0})
-        self.udp_publisher.send(stop_command)
-
-        return True
-
-    def _execute_discrete_action(
-        self, command: Dict[str, Any], duration: float
-    ) -> bool:
-        """Execute a discrete action (button press)."""
-        logger.info(f"Executing discrete action")
-
-        # Send command
-        self.udp_publisher.send(command)
-
-        # Wait for duration
-        time.sleep(duration)
-
-        return True
 
     def get_status(self) -> Dict[str, Any]:
         """Get current controller status."""
@@ -327,7 +337,7 @@ class DogActionController:
             "running": self.is_running,
             "robot_state": self.robot_state,
             "queue_status": self.action_queue.get_queue_status(),
-            "available_actions": list(self.action_mappings.keys()),
+            "available_actions": self.available_actions,
         }
 
     def emergency_stop(self) -> bool:
@@ -335,25 +345,16 @@ class DogActionController:
         logger.warning("Emergency stop activated")
 
         # Clear action queue
-        cleared_count = self.action_queue.clear_queue()
+        self.action_queue.clear_queue()
 
-        # Send stop command if UDP is available
-        if self.udp_publisher:
-            stop_command = {
-                "ly": 0.0,
-                "lx": 0.0,
-                "rx": 0.0,
-                "ry": 0.0,
-                "L1": 0,
-                "R1": 0,
-                "x": 0,
-                "circle": 0,
-                "triangle": 0,
-                "dpady": 0,
-                "dpadx": 0,
-                "message_rate": 20,
-            }
-            self.udp_publisher.send(stop_command)
+        # Execute stop movement if MovementGroups available
+        if self.movement_groups:
+            try:
+                self.movement_groups.MovementLib = []
+                self.movement_groups.stop(time=0.1)
+                logger.info("Emergency stop movement executed")
+            except Exception as e:
+                logger.error(f"Failed to execute emergency stop movement: {e}")
 
         return True
 
@@ -403,10 +404,8 @@ class NetworkActionHandler(BaseHTTPRequestHandler):
 
             elif path == "/actions":
                 actions = {
-                    "available_actions": list(
-                        self.action_controller.action_mappings.keys()
-                    ),
-                    "description": "Available actions for the dog robot",
+                    "available_actions": self.action_controller.available_actions,
+                    "description": "Available actions for the dog robot (MovementGroups)",
                 }
                 self._send_json_response(actions)
 
@@ -414,7 +413,7 @@ class NetworkActionHandler(BaseHTTPRequestHandler):
                 # Serve basic API documentation
                 api_docs = {
                     "name": "Stanford Quadruped Network Action Server",
-                    "version": "1.0",
+                    "version": "2.0",
                     "endpoints": {
                         "GET /status": "Get robot and queue status",
                         "GET /actions": "List available actions",
@@ -423,9 +422,9 @@ class NetworkActionHandler(BaseHTTPRequestHandler):
                         "POST /clear": "Clear action queue",
                     },
                     "example_execute": {
-                        "action": "forward",
+                        "action": "move_forward",
                         "duration": 3.0,
-                        "parameters": {"ly": 0.8},
+                        "parameters": {},
                     },
                 }
                 self._send_json_response(api_docs)
