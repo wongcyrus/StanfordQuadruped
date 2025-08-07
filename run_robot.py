@@ -1,21 +1,22 @@
-import numpy as np
 import time
+
+import numpy as np
 import requests
-from src.IMU import IMU
-from src.Controller import Controller
-from src.JoystickInterface import JoystickInterface
-from src.State import BehaviorState, State
-from MangDang.mini_pupper.HardwareInterface import HardwareInterface
 from MangDang.mini_pupper.Config import Configuration
-from pupper.Kinematics import four_legs_inverse_kinematics
 from MangDang.mini_pupper.display import Display
-from src.MovementScheme import MovementScheme
-from src.createDanceActionListSample import MovementLib
+from MangDang.mini_pupper.HardwareInterface import HardwareInterface
+from pupper.Kinematics import four_legs_inverse_kinematics
 from src.Command import Command
+from src.Controller import Controller
+from src.createDanceActionListSample import MovementLib
+from src.IMU import IMU
+from src.JoystickInterface import JoystickInterface
+from src.MovementScheme import MovementScheme
+from src.State import BehaviorState, State
+
 
 def main(use_imu=False):
-    """Main program
-    """
+    """Main program"""
 
     # Create config
     config = Configuration()
@@ -38,7 +39,7 @@ def main(use_imu=False):
     joystick_interface = JoystickInterface(config)
     print("Done.")
 
-    #Create movement group scheme instance and set a default false state
+    # Create movement group scheme instance and set a default false state
     movementCtl = MovementScheme(MovementLib)
     dance_active_state = False
 
@@ -49,16 +50,8 @@ def main(use_imu=False):
     print("swing time: ", config.swing_time)
     print("z clearance: ", config.z_clearance)
     print("x shift: ", config.x_shift)
-<<<<<<< HEAD
-    requests.get('http://localhost:8080/pupper/status/start')
-    requests.get('http://localhost:8080/pupper/status/toggle')
-=======
-    
-    # Limit the angle of each servo motor based on the current structure to protect the servo motors.
-    joint_angles_maxLimit = [[1.2,  0.6, 1,  0.5], [1.3, 1.3, 1.6, 1.6], [0.7,  0.7,   0,    0]]
-    joint_angles_minLimit = [[-0.5, -1, -0.6, -1], [0,  0,  -0.6, -0.6], [-1.5, -1.5, -1.2, -1.2]]
-
->>>>>>> wongcyrus/mini_pupper
+    requests.get("http://localhost:8080/pupper/status/start")
+    requests.get("http://localhost:8080/pupper/status/toggle")
 
     # Wait until the activate button has been pressed
     while True:
@@ -100,19 +93,18 @@ def main(use_imu=False):
 
             # Step the controller forward by dt
             if dance_active_state == True:
-            	# Caculate legsLocation, attitudes and speed using custom movement script
+                # Caculate legsLocation, attitudes and speed using custom movement script
                 movementCtl.runMovementScheme()
                 command.horizontal_velocity = movementCtl.getMovemenSpeed()
-                command.legslocation        = movementCtl.getMovemenLegsLocation()
-                command.roll                = movementCtl.attitude_now[0]
-                command.pitch               = movementCtl.attitude_now[1]
-                command.yaw                 = movementCtl.attitude_now[2]
-                command.yaw_rate            = movementCtl.getMovemenTurn()
+                command.legslocation = movementCtl.getMovemenLegsLocation()
+                command.roll = movementCtl.attitude_now[0]
+                command.pitch = movementCtl.attitude_now[1]
+                command.yaw = movementCtl.attitude_now[2]
+                command.yaw_rate = movementCtl.getMovemenTurn()
                 controller.run(state, command, disp)
             else:
                 controller.run(state, command, disp)
 
-            
             # Limit the angle of each servo motor based on the current structure to protect the servo motors.
             for i in range(3):
                 for j in range(4):
@@ -120,7 +112,7 @@ def main(use_imu=False):
                         state.joint_angles[i][j] = joint_angles_maxLimit[i][j]
                     if state.joint_angles[i][j] < joint_angles_minLimit[i][j]:
                         state.joint_angles[i][j] = joint_angles_minLimit[i][j]
-              
+
             # Update the pwm widths going to the servos
             hardware_interface.set_actuator_postions(state.joint_angles)
 

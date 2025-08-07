@@ -46,25 +46,9 @@
 #   move_forward() move_backward() move_right() move_left()
 #   move_leftfront() move_rightfront() move_leftback() move_rightback()
 #
-<<<<<<< HEAD
 # Level 3(for beyond) samples
 #  body_cycle()
 #  head_ellipse()
-=======
-# Level 2 (Advanced APIs - with parameters):
-#   body_row(roll_deg, time_uni, time_acc)
-#   gait_uni(v_x, v_y, time_uni, time_acc)
-#   height_move(ht, time_uni, time_acc)
-#   head_move(pitch_deg, yaw_deg, time_uni, time_acc)
-#   foreleg_lift(leg_index, ht, time_uni, time_acc)
-#   backleg_lift(leg_index, ht, time_uni, time_acc)
-#   rotate(angle)
-#   bowback(angle)
-#
-# Level 3 (Complex APIs - advanced choreography):
-#   body_cycle() head_ellipse()
-#
->>>>>>> wongcyrus/mini_pupper
 
 try:
     from MovementGroup import MovementGroups
@@ -73,7 +57,6 @@ except ImportError:
 
 Move = MovementGroups()
 
-<<<<<<< HEAD
 Move.look_right()
 Move.look_left()
 Move.look_right()
@@ -81,26 +64,10 @@ Move.look_left()
 Move.body_cycle()
 Move.head_ellipse()
 Move.height_move(-0.04)
-Move.foreleg_lift('right')
+Move.foreleg_lift("right")
 Move.backleg_lift()
 Move.look_up()
 
-=======
-# === ENHANCED CHOREOGRAPHY SEQUENCE ===
-
-# Opening Sequence - Greeting and Activation
-print("=== Enhanced Mini Pupper Dance Choreography ===")
-print("Starting greeting sequence...")
-
-# Greeting sequence - Look around to acknowledge audience
-Move.look_up()  # Look up to survey the area
-Move.look_right()  # Look right
-Move.look_upperright()  # Look up-right diagonal
-Move.look_left()  # Look left
-Move.look_upperleft()  # Look up-left diagonal
-Move.look_down()  # Look down politely
-Move.stop(1)  # Pause briefly
->>>>>>> wongcyrus/mini_pupper
 
 print("Greeting complete. Starting warm-up movements...")
 
