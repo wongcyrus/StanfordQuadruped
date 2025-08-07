@@ -262,41 +262,64 @@ class DogActionController:
             if action_name == "stop":
                 # Stop function takes time parameter
                 movement_func(time=duration)
-            elif action_name in ["head_move"]:
+            elif action_name in [
+                "head_move",
+                "look_up",
+                "look_down",
+                "look_left",
+                "look_right",
+            ]:
                 # Head move takes pitch_deg, yaw_deg, time_uni, time_acc
                 pitch_deg = parameters.get("pitch_deg", 0)
                 yaw_deg = parameters.get("yaw_deg", 0)
+                time_uni = parameters.get("time_uni", duration)
+                time_acc = parameters.get("time_acc", 1.0)
                 movement_func(
-                    pitch_deg=pitch_deg, yaw_deg=yaw_deg, time_uni=duration, time_acc=1
+                    pitch_deg=pitch_deg,
+                    yaw_deg=yaw_deg,
+                    time_uni=time_uni,
+                    time_acc=time_acc,
                 )
             elif action_name in ["body_row"]:
                 # Body row takes row_deg, time_uni, time_acc
                 row_deg = parameters.get("row_deg", 0)
-                movement_func(row_deg=row_deg, time_uni=duration, time_acc=1)
+                time_uni = parameters.get("time_uni", duration)
+                time_acc = parameters.get("time_acc", 1.0)
+                movement_func(row_deg=row_deg, time_uni=time_uni, time_acc=time_acc)
             elif action_name in ["balance"]:
                 # Balance takes roll_deg, pitch_deg, time_uni, time_acc
                 roll_deg = parameters.get("roll_deg", 0)
                 pitch_deg = parameters.get("pitch_deg", 0)
+                time_uni = parameters.get("time_uni", duration)
+                time_acc = parameters.get("time_acc", 1.0)
                 movement_func(
                     roll_deg=roll_deg,
                     pitch_deg=pitch_deg,
-                    time_uni=duration,
-                    time_acc=1,
+                    time_uni=time_uni,
+                    time_acc=time_acc,
                 )
             elif action_name in ["gait_uni"]:
                 # Gait uni takes v_x, v_y, time_uni, time_acc
                 v_x = parameters.get("v_x", 0)
                 v_y = parameters.get("v_y", 0)
-                movement_func(v_x=v_x, v_y=v_y, time_uni=duration, time_acc=1)
+                time_uni = parameters.get("time_uni", duration)
+                time_acc = parameters.get("time_acc", 1.0)
+                movement_func(v_x=v_x, v_y=v_y, time_uni=time_uni, time_acc=time_acc)
             elif action_name in ["height_move"]:
                 # Height move takes ht, time_uni, time_acc
                 ht = parameters.get("ht", 0)
-                movement_func(ht=ht, time_uni=duration, time_acc=1)
+                time_uni = parameters.get("time_uni", duration)
+                time_acc = parameters.get("time_acc", 1.0)
+                movement_func(ht=ht, time_uni=time_uni, time_acc=time_acc)
             elif action_name in ["foreleg_lift", "backleg_lift"]:
                 # Leg lift takes leg_index, ht, time_uni, time_acc
                 leg_index = parameters.get("leg_index", "left")
                 ht = parameters.get("ht", 0.01)
-                movement_func(leg_index=leg_index, ht=ht, time_uni=duration, time_acc=1)
+                time_uni = parameters.get("time_uni", duration)
+                time_acc = parameters.get("time_acc", 1.0)
+                movement_func(
+                    leg_index=leg_index, ht=ht, time_uni=time_uni, time_acc=time_acc
+                )
             elif action_name in ["rotate"]:
                 # Rotate takes angle
                 angle = parameters.get("angle", 1)
@@ -311,19 +334,8 @@ class DogActionController:
 
             logger.info(f"Executed MovementGroup action: {action_name}")
 
-            # Simulate execution time for simple actions
-            simple_actions = [
-                "stop",
-                "gait_uni",
-                "head_move",
-                "body_row",
-                "balance",
-                "height_move",
-                "foreleg_lift",
-                "backleg_lift",
-            ]
-            if action_name not in simple_actions:
-                time.sleep(duration)
+            # Don't sleep here - let the client handle timing
+            # The client will sleep for the action duration after receiving the response
 
             return True
 
