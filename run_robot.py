@@ -49,8 +49,16 @@ def main(use_imu=False):
     print("swing time: ", config.swing_time)
     print("z clearance: ", config.z_clearance)
     print("x shift: ", config.x_shift)
+<<<<<<< HEAD
     requests.get('http://localhost:8080/pupper/status/start')
     requests.get('http://localhost:8080/pupper/status/toggle')
+=======
+    
+    # Limit the angle of each servo motor based on the current structure to protect the servo motors.
+    joint_angles_maxLimit = [[1.2,  0.6, 1,  0.5], [1.3, 1.3, 1.6, 1.6], [0.7,  0.7,   0,    0]]
+    joint_angles_minLimit = [[-0.5, -1, -0.6, -1], [0,  0,  -0.6, -0.6], [-1.5, -1.5, -1.2, -1.2]]
+
+>>>>>>> wongcyrus/mini_pupper
 
     # Wait until the activate button has been pressed
     while True:
@@ -104,6 +112,15 @@ def main(use_imu=False):
             else:
                 controller.run(state, command, disp)
 
+            
+            # Limit the angle of each servo motor based on the current structure to protect the servo motors.
+            for i in range(3):
+                for j in range(4):
+                    if state.joint_angles[i][j] > joint_angles_maxLimit[i][j]:
+                        state.joint_angles[i][j] = joint_angles_maxLimit[i][j]
+                    if state.joint_angles[i][j] < joint_angles_minLimit[i][j]:
+                        state.joint_angles[i][j] = joint_angles_minLimit[i][j]
+              
             # Update the pwm widths going to the servos
             hardware_interface.set_actuator_postions(state.joint_angles)
 

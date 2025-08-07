@@ -15,7 +15,10 @@ import queue
 import sys
 import threading
 import time
+<<<<<<< HEAD
 import numpy as np
+=======
+>>>>>>> wongcyrus/mini_pupper
 from datetime import datetime
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from typing import Any, Dict, Optional
@@ -30,6 +33,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+<<<<<<< HEAD
 # Import MovementGroups and robot control components
 try:
     from src.MovementGroup import MovementGroups
@@ -54,6 +58,16 @@ except ImportError as e:
     HardwareInterface = None
     Configuration = None
     Display = None
+=======
+# Import MovementGroups
+try:
+    from MovementGroup import MovementGroups
+
+    logger.info("MovementGroups imported successfully")
+except ImportError as e:
+    logger.error(f"Failed to import MovementGroups: {e}")
+    MovementGroups = None
+>>>>>>> wongcyrus/mini_pupper
 
 
 class ActionCommand:
@@ -167,6 +181,7 @@ class DogActionController:
             self.movement_groups = None
             logger.error("MovementGroups not available - running in limited mode")
 
+<<<<<<< HEAD
         # Initialize robot hardware components
         self.controller = None
         self.hardware_interface = None
@@ -174,6 +189,8 @@ class DogActionController:
         self.config = None
         self._init_robot_hardware()
 
+=======
+>>>>>>> wongcyrus/mini_pupper
         # Import UDP publisher if available
         try:
             import UDPComms
@@ -193,6 +210,7 @@ class DogActionController:
         )
         self.processor_thread.start()
 
+<<<<<<< HEAD
     def _init_robot_hardware(self):
         """Initialize robot hardware components."""
         try:
@@ -216,6 +234,8 @@ class DogActionController:
             self.config = None
             self.display = None
 
+=======
+>>>>>>> wongcyrus/mini_pupper
     def _get_available_actions(self) -> list:
         """Get list of available actions from MovementGroups."""
         if not self.movement_groups:
@@ -285,7 +305,11 @@ class DogActionController:
                 time.sleep(0.1)  # Brief pause between actions
 
     def _execute_single_action(self, action: ActionCommand) -> bool:
+<<<<<<< HEAD
         """Execute a single action using MovementGroups and robot controller."""
+=======
+        """Execute a single action using MovementGroups."""
+>>>>>>> wongcyrus/mini_pupper
         action_name = action.action_name.lower()
         duration = action.duration
         parameters = action.parameters or {}
@@ -298,10 +322,13 @@ class DogActionController:
             logger.warning(f"Unknown action: {action_name}")
             return False
 
+<<<<<<< HEAD
         if not self.controller or not self.hardware_interface or not self.state:
             logger.warning("Robot hardware not available - executing in simulation mode")
             return self._execute_simulation_mode(action)
 
+=======
+>>>>>>> wongcyrus/mini_pupper
         try:
             # Get the movement function
             movement_func = getattr(self.movement_groups, action_name)
@@ -325,6 +352,7 @@ class DogActionController:
                 yaw_deg = parameters.get("yaw_deg", 0)
                 time_uni = parameters.get("time_uni", duration)
                 time_acc = parameters.get("time_acc", 1.0)
+<<<<<<< HEAD
                 if action_name == "head_move":
                     movement_func(
                         pitch_deg=pitch_deg,
@@ -334,12 +362,35 @@ class DogActionController:
                     )
                 else:
                     movement_func()
+=======
+                movement_func(
+                    pitch_deg=pitch_deg,
+                    yaw_deg=yaw_deg,
+                    time_uni=time_uni,
+                    time_acc=time_acc,
+                )
+>>>>>>> wongcyrus/mini_pupper
             elif action_name in ["body_row"]:
                 # Body row takes row_deg, time_uni, time_acc
                 row_deg = parameters.get("row_deg", 0)
                 time_uni = parameters.get("time_uni", duration)
                 time_acc = parameters.get("time_acc", 1.0)
                 movement_func(row_deg=row_deg, time_uni=time_uni, time_acc=time_acc)
+<<<<<<< HEAD
+=======
+            elif action_name in ["balance"]:
+                # Balance takes roll_deg, pitch_deg, time_uni, time_acc
+                roll_deg = parameters.get("roll_deg", 0)
+                pitch_deg = parameters.get("pitch_deg", 0)
+                time_uni = parameters.get("time_uni", duration)
+                time_acc = parameters.get("time_acc", 1.0)
+                movement_func(
+                    roll_deg=roll_deg,
+                    pitch_deg=pitch_deg,
+                    time_uni=time_uni,
+                    time_acc=time_acc,
+                )
+>>>>>>> wongcyrus/mini_pupper
             elif action_name in ["gait_uni"]:
                 # Gait uni takes v_x, v_y, time_uni, time_acc
                 v_x = parameters.get("v_x", 0)
@@ -374,17 +425,26 @@ class DogActionController:
                 # Simple movements with no parameters
                 movement_func()
 
+<<<<<<< HEAD
             # Now execute the movements through the robot controller
             if self.movement_groups.MovementLib:
                 self._execute_movement_lib(self.movement_groups.MovementLib)
 
             logger.info(f"Executed MovementGroup action: {action_name}")
+=======
+            logger.info(f"Executed MovementGroup action: {action_name}")
+
+            # Don't sleep here - let the client handle timing
+            # The client will sleep for the action duration after receiving the response
+
+>>>>>>> wongcyrus/mini_pupper
             return True
 
         except Exception as e:
             logger.error(f"Failed to execute MovementGroup action '{action_name}': {e}")
             return False
 
+<<<<<<< HEAD
     def _execute_simulation_mode(self, action: ActionCommand) -> bool:
         """Execute action in simulation mode (without hardware)."""
         try:
@@ -458,6 +518,8 @@ class DogActionController:
             logger.error(f"Failed to execute movement sequence: {e}")
             raise
 
+=======
+>>>>>>> wongcyrus/mini_pupper
     def get_status(self) -> Dict[str, Any]:
         """Get current controller status."""
         return {
@@ -474,6 +536,7 @@ class DogActionController:
         # Clear action queue
         self.action_queue.clear_queue()
 
+<<<<<<< HEAD
         # Execute stop movement if MovementGroups and hardware are available
         if self.movement_groups and self.controller and self.hardware_interface:
             try:
@@ -496,6 +559,16 @@ class DogActionController:
                 logger.info("Emergency stop executed in simulation mode")
             except Exception as e:
                 logger.error(f"Failed to execute emergency stop in simulation mode: {e}")
+=======
+        # Execute stop movement if MovementGroups available
+        if self.movement_groups:
+            try:
+                self.movement_groups.MovementLib = []
+                self.movement_groups.stop(time=0.1)
+                logger.info("Emergency stop movement executed")
+            except Exception as e:
+                logger.error(f"Failed to execute emergency stop movement: {e}")
+>>>>>>> wongcyrus/mini_pupper
 
         return True
 
@@ -696,4 +769,8 @@ def main():
 
 
 if __name__ == "__main__":
+<<<<<<< HEAD
     main()
+=======
+    main()
+>>>>>>> wongcyrus/mini_pupper
