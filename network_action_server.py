@@ -15,12 +15,11 @@ import queue
 import sys
 import threading
 import time
+import numpy as np
 from datetime import datetime
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from typing import Any, Dict, Optional
 from urllib.parse import urlparse
-
-import numpy as np
 
 # Add src directory to path for MovementGroup import
 sys.path.append("./src")
@@ -33,13 +32,12 @@ logger = logging.getLogger(__name__)
 
 # Import MovementGroups and robot control components
 try:
-    from pupper.Kinematics import four_legs_inverse_kinematics
-    from src.Command import Command
-    from src.Controller import Controller
     from src.MovementGroup import MovementGroups
     from src.MovementScheme import MovementScheme
+    from src.Controller import Controller
     from src.State import State
-
+    from src.Command import Command
+    from pupper.Kinematics import four_legs_inverse_kinematics
     logger.info("MovementGroups and robot control components imported successfully")
 except ImportError as e:
     logger.error(f"Failed to import robot control components: {e}")
@@ -47,10 +45,9 @@ except ImportError as e:
 
 # Import hardware interface
 try:
+    from MangDang.mini_pupper.HardwareInterface import HardwareInterface
     from MangDang.mini_pupper.Config import Configuration
     from MangDang.mini_pupper.display import Display
-    from MangDang.mini_pupper.HardwareInterface import HardwareInterface
-
     logger.info("Hardware interface imported successfully")
 except ImportError as e:
     logger.error(f"Failed to import hardware interface: {e}")
@@ -210,9 +207,7 @@ class DogActionController:
                     self.display = None
                 logger.info("Robot hardware initialized successfully")
             else:
-                logger.warning(
-                    "Hardware interface not available - running in simulation mode"
-                )
+                logger.warning("Hardware interface not available - running in simulation mode")
         except Exception as e:
             logger.error(f"Failed to initialize robot hardware: {e}")
             self.controller = None
@@ -304,9 +299,7 @@ class DogActionController:
             return False
 
         if not self.controller or not self.hardware_interface or not self.state:
-            logger.warning(
-                "Robot hardware not available - executing in simulation mode"
-            )
+            logger.warning("Robot hardware not available - executing in simulation mode")
             return self._execute_simulation_mode(action)
 
         try:
@@ -397,16 +390,14 @@ class DogActionController:
         try:
             # Get the movement function
             movement_func = getattr(self.movement_groups, action.action_name.lower())
-
+            
             # Clear any previous movements
             self.movement_groups.MovementLib = []
-
+            
             # Execute the movement function
             movement_func()
-
-            logger.info(
-                f"Executed MovementGroup action in simulation mode: {action.action_name}"
-            )
+            
+            logger.info(f"Executed MovementGroup action in simulation mode: {action.action_name}")
             return True
         except Exception as e:
             logger.error(f"Failed to execute action in simulation mode: {e}")
@@ -423,25 +414,25 @@ class DogActionController:
             command = Command()
             # Set pseudo_dance_event to True like in run_danceActionList.py
             command.pseudo_dance_event = True
-
+            
             # Set up timing loop similar to run_danceActionList.py
             lib_length = len(movement_lib)
             last_loop = time.time()
-
+            
             while True:
                 now = time.time()
-
+                
                 # Maintain the control loop timing - same as run_danceActionList.py
                 if now - last_loop < self.config.dt:
                     continue
                 last_loop = time.time()
-
+                
                 # Set default orientation (no IMU)
                 self.state.quat_orientation = np.array([1, 0, 0, 0])
-
+                
                 # Run movement scheme
                 movement_ctl.runMovementScheme()
-
+                
                 # Get movement commands - same as run_danceActionList.py
                 command.legslocation = movement_ctl.getMovemenLegsLocation()
                 command.horizontal_velocity = movement_ctl.getMovemenSpeed()
@@ -449,23 +440,20 @@ class DogActionController:
                 command.pitch = movement_ctl.attitude_now[1]
                 command.yaw = movement_ctl.attitude_now[2]
                 command.yaw_rate = movement_ctl.getMovemenTurn()
-
+                
                 # Run controller
                 self.controller.run(self.state, command, self.display)
-
+                
                 # Update hardware
                 self.hardware_interface.set_actuator_postions(self.state.joint_angles)
-
+                
                 # Check if movement is complete - same as run_danceActionList.py
-                if (
-                    movement_ctl.movement_now_number >= lib_length - 1
-                    and movement_ctl.tick >= movement_ctl.now_ticks
-                ):
+                if movement_ctl.movement_now_number >= lib_length - 1 and movement_ctl.tick >= movement_ctl.now_ticks:
                     logger.info("Movement sequence execution completed")
                     break
-
+                    
             logger.info("Movement sequence execution completed")
-
+            
         except Exception as e:
             logger.error(f"Failed to execute movement sequence: {e}")
             raise
@@ -492,11 +480,11 @@ class DogActionController:
                 # Clear movement library and add stop command
                 self.movement_groups.MovementLib = []
                 self.movement_groups.stop(time=0.1)
-
+                
                 # Execute the stop movement immediately
                 if self.movement_groups.MovementLib:
                     self._execute_movement_lib(self.movement_groups.MovementLib)
-
+                
                 logger.info("Emergency stop movement executed")
             except Exception as e:
                 logger.error(f"Failed to execute emergency stop movement: {e}")
@@ -507,9 +495,7 @@ class DogActionController:
                 self.movement_groups.stop(time=0.1)
                 logger.info("Emergency stop executed in simulation mode")
             except Exception as e:
-                logger.error(
-                    f"Failed to execute emergency stop in simulation mode: {e}"
-                )
+                logger.error(f"Failed to execute emergency stop in simulation mode: {e}")
 
         return True
 
@@ -679,7 +665,7 @@ def main():
         "--host", default="0.0.0.0", help="Server host (default: 0.0.0.0)"
     )
     parser.add_argument(
-        "--port", type=int, default=8080, help="Server port (default: 8080)"
+        "--port", type=int, default=8081, help="Server port (default: 8081)"
     )
     parser.add_argument(
         "--udp-port",
