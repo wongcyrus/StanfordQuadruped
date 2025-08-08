@@ -7,7 +7,7 @@ and settings used throughout the dog robot control system.
 
 # Network Configuration
 NETWORK_SERVER_HOST = "127.0.0.1"  # Local network_action_server host
-NETWORK_SERVER_PORT = 8080  # Local network_action_server port
+NETWORK_SERVER_PORT = 8081  # Local network_action_server port
 
 # Movement Parameters
 MIN_SPEED = 0.1
